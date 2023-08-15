@@ -1,4 +1,7 @@
-/* Each board square is represented with a byte:
+/* Requires: SDL2 and SDL2_image
+   Compile with: eval cc chess.c $(pkg-config sdl2 sdl2_image --cflags --libs)
+
+   Each board square is represented with a byte:
    MSB - Piece selected
    7th - Dot is present on square
    6th - Pawn can be "en passanted"
@@ -7,9 +10,8 @@
    3 LSBs - Piece type
 */
 
-#include <stdio.h>
-#include <SDL.h>
-#include <SDL_image.h>
+#include "SDL.h"
+#include "SDL_image.h"
 
 typedef unsigned char u8;
 
@@ -26,21 +28,21 @@ SDL_Texture* loadSVGFromFile(SDL_Renderer* renderer, const char* filename,
 {
     SDL_RWops* io = SDL_RWFromFile(filename, "r");
     if (io == NULL) {
-        fprintf(stderr, "Error opening %s: %s\n", filename, SDL_GetError());
+        SDL_Log("Error opening %s: %s\n", filename, SDL_GetError());
         return NULL;
     }
 
     SDL_Surface* sur = IMG_LoadSizedSVG_RW(io, width, height);
     SDL_RWclose(io);
     if (sur == NULL) {
-        fprintf(stderr, "Error creating surface: %s\n", SDL_GetError());
+        SDL_Log("Error creating surface: %s\n", SDL_GetError());
         return NULL;
     }
 
     SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, sur);
     SDL_FreeSurface(sur);
     if (tex == NULL) {
-        fprintf(stderr, "Error creating texture: %s\n", SDL_GetError());
+        SDL_Log("Error creating texture: %s\n", SDL_GetError());
         return NULL;
     }
 
@@ -103,13 +105,13 @@ u8 drawBoard(u8* board, SDL_Renderer* renderer, SDL_Texture** textures,
 {
     // It is recommended to clear renderer before each frame drawing
     if (SDL_RenderClear(renderer) != 0) {
-        fprintf(stderr, "Error clearing renderer: %s\n", SDL_GetError());
+        SDL_Log("Error clearing renderer: %s\n", SDL_GetError());
         return 1;
     }
 
     // Draw chessboard
     if (SDL_RenderCopy(renderer, chessboard, NULL, NULL) != 0) {
-        fprintf(stderr, "Error drawing chessboard: %s\n", SDL_GetError());
+        SDL_Log("Error drawing chessboard: %s\n", SDL_GetError());
         return 1;
     }
 
@@ -125,14 +127,14 @@ u8 drawBoard(u8* board, SDL_Renderer* renderer, SDL_Texture** textures,
             // Check if selected
             if (board[i] >> 7) {
                 if (SDL_RenderFillRect(renderer, tile) != 0) {
-                    fprintf(stderr, "Error drawing select square: %s\n", SDL_GetError());
+                    SDL_Log("Error drawing select square: %s\n", SDL_GetError());
                     return 1;
                 }
             }
 
             // Draw piece
             if (SDL_RenderCopy(renderer, textures[getTextureID(board[i])], NULL, tile) != 0) {
-                fprintf(stderr, "Error drawing piece: %s\n", SDL_GetError());
+                SDL_Log("Error drawing piece: %s\n", SDL_GetError());
                 return 1;
             }
         }
@@ -140,7 +142,7 @@ u8 drawBoard(u8* board, SDL_Renderer* renderer, SDL_Texture** textures,
         // Draw dot if exists
         if ((board[i] >> 6) & 1) {
             if (SDL_RenderCopy(renderer, textures[12], NULL, tile) != 0) {
-                fprintf(stderr, "Error drawing dot: %s\n", SDL_GetError());
+                SDL_Log("Error drawing dot: %s\n", SDL_GetError());
                 return 1;
             }
         }
@@ -428,21 +430,21 @@ int main(int argc, char *argv[])
     };
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        fprintf(stderr, "Error initializing SDL: %s\n", SDL_GetError());
+        SDL_Log("Error initializing SDL: %s\n", SDL_GetError());
         return 1;
     }
 
     SDL_Window* window = SDL_CreateWindow("Chess", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                           WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_OPENGL);
     if (window == NULL) {
-        fprintf(stderr, "Error creating window: %s\n", SDL_GetError());
+        SDL_Log("Error creating window: %s\n", SDL_GetError());
         SDL_Quit();
         return 1;
     }
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (renderer == NULL) {
-        fprintf(stderr, "Error creating renderer: %s\n", SDL_GetError());
+        SDL_Log("Error creating renderer: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
         SDL_Quit();
         return 1;
@@ -454,7 +456,7 @@ int main(int argc, char *argv[])
     for (i = 0; i < TEXTURES_NUM; i++) {
         textures[i] = loadSVGFromFile(renderer, asset_names[i], TILE_LEN, TILE_LEN);
         if (textures[i] == NULL) {
-            fprintf(stderr, "Error loading textures: %s\n", SDL_GetError());
+            SDL_Log("Error loading textures: %s\n", SDL_GetError());
             SDL_DestroyRenderer(renderer);
             SDL_DestroyWindow(window);
             SDL_Quit();
@@ -464,7 +466,7 @@ int main(int argc, char *argv[])
 
     // Make dot transparent (25% opacity)
     if (SDL_SetTextureAlphaMod(textures[12], 63) != 0) {
-        fprintf(stderr, "Error setting alpha mod: %s\n", SDL_GetError());
+        SDL_Log("Error setting alpha mod: %s\n", SDL_GetError());
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
@@ -474,7 +476,7 @@ int main(int argc, char *argv[])
     SDL_Texture* chessboard = loadSVGFromFile(renderer, "assets/chessboard.svg",
                                               WIN_WIDTH, WIN_HEIGHT);
     if (chessboard == NULL) {
-        fprintf(stderr, "Error loading textures: %s\n", SDL_GetError());
+        SDL_Log("Error loading textures: %s\n", SDL_GetError());
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
@@ -483,7 +485,7 @@ int main(int argc, char *argv[])
 
     // Set to tile highlight color
     if (SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255) != 0) {
-        fprintf(stderr, "Error setting draw color: %s\n", SDL_GetError());
+        SDL_Log("Error setting draw color: %s\n", SDL_GetError());
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
